@@ -4,21 +4,20 @@ import List.Extra
 import Ports exposing (..)
 import Time exposing (millisecond)
 import Types exposing (..)
-import Types exposing (..)
 
 
-main : Program ConfigFile Model Msg
+main : Program Never Model Msg
 main =
-    Platform.programWithFlags
+    Platform.program
         { init = init
         , update = update
         , subscriptions = subscriptions
         }
 
 
-init : ConfigFile -> ( Model, Cmd Msg )
-init config =
-    ( initModel config
+init : ( Model, Cmd Msg )
+init =
+    ( initModel
     , initCmd
     )
 
@@ -35,18 +34,17 @@ update msg model =
 
         SendOneMessage ->
             sendOneMessage model
-                |> logValue "SendOneMessage" (model.outMsgQueue |> List.head)
+                |> logValue "SendOneMessage" (List.head model.outMsgQueue)
 
         GetSnippetResult { type_, channel } ->
-            let
-                outMsg : SlackOutMessage
-                outMsg =
-                    ( snippetResultToString type_, channel )
-            in
-                ( { model | outMsgQueue = outMsg :: model.outMsgQueue }
-                , Cmd.none
-                )
-                    |> logValue "GetSnippetResult" type_
+            ( model
+                |> sendMsg
+                    { channel = channel
+                    , text = snippetResultToString type_
+                    }
+            , Cmd.none
+            )
+                |> logValue "GetSnippetResult" type_
 
         NoOp ->
             ( model, Cmd.none )
@@ -64,7 +62,8 @@ subscriptions model =
 
 
 ----------------------
--- subscriptions --------------------
+-- subscriptions -----
+----------------------
 
 
 sendMsgIfQueueNotEmpty : Model -> Sub Msg
@@ -213,10 +212,9 @@ snippetResultToString type_ =
 ----------------------
 
 
-initModel : ConfigFile -> Model
-initModel config =
-    { channel = config.channel
-    , running = False
+initModel : Model
+initModel =
+    { running = False
     , outMsgQueue = []
     }
 
@@ -230,6 +228,11 @@ initCmd =
 ----------------------
 -- helpers
 ----------------------
+
+
+sendMsg : SlackMessage -> Model -> Model
+sendMsg msg model =
+    { model | outMsgQueue = model.outMsgQueue ++ [ msg ] }
 
 
 logValue : String -> a -> b -> b

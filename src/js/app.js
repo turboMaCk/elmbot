@@ -10,14 +10,14 @@ import rimraf from 'rimraf';
 const config = JSON.parse(fs.readFileSync('config/config.json', 'utf8'));
 
 const rtm = new RTMClient(config.apiToken);
-const app = Elm.Main.worker(config);
+const app = Elm.Main.worker();
 
 app.ports.start.subscribe(
   () => rtm.start()
 );
 
 app.ports.sendMessage.subscribe(
-  ([message, channel]) => rtm.sendMessage(message, channel)
+  ({text, channel}) => rtm.sendMessage(text, channel)
 );
 
 const createElmPackageJson = (dirName) => {

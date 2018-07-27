@@ -10,7 +10,7 @@ import Types exposing (..)
 port start : () -> Cmd msg
 
 
-port sendMessage : SlackOutMessage -> Cmd msg
+port sendMessage : SlackMessage -> Cmd msg
 
 
 port incomingMessageRaw : (JD.Value -> msg) -> Sub msg
