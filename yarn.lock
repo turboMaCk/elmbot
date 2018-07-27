@@ -1971,6 +1971,10 @@ nan@^2.3.0:
   version "2.6.2"
   resolved "https://registry.yarnpkg.com/nan/-/nan-2.6.2.tgz#e4ff34e6c95fdfb5aecc08de6596f43605a7db45"
 
+ncp@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/ncp/-/ncp-2.0.0.tgz#195a21d6c46e361d2fb1281ba38b91e9df7bdbb3"
+
 node-elm-compiler@^4.2.1:
   version "4.3.1"
   resolved "https://registry.yarnpkg.com/node-elm-compiler/-/node-elm-compiler-4.3.1.tgz#498ead46587f2f0b9faae6ebd2224f6f2304f9db"

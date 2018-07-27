@@ -6,6 +6,7 @@ import fs from 'fs';
 import childProcess from 'child_process';
 import he from 'he';
 import rimraf from 'rimraf';
+import ncp from 'ncp';
 
 const config = JSON.parse(fs.readFileSync('config/config.json', 'utf8'));
 
@@ -30,6 +31,7 @@ const createElmPackageJson = (dirName) => {
 };
 
 const installPackages = (packages, dirName) => {
+  console.log('installing packages');
   let failedPackage = null;
   packages.forEach((pkg) => {
       if (failedPackage) return;
@@ -52,6 +54,28 @@ const cleanup = (dirName) => {
   });
 };
 
+const prepareTemplateDirectory = () => {
+  console.log('preparing template directory (compiling elm-lang/core and stuff)');
+  const tempDir = tmp.dirSync({prefix: 'template_'});
+  createElmPackageJson(tempDir.name);
+  return tempDir.name;
+};
+
+const templateDir = prepareTemplateDirectory();
+
+const copyTemplateToSnippet = (templateDir, snippetDir, channel) =>  {
+  console.log('copying template folder to a snippet folder');
+  return new Promise(function(resolve, reject) {
+    ncp(templateDir, snippetDir, (err) => {
+        if (err) {
+          app.ports.getResultRaw.send({channel, type: "other_error", error: "Couldn't copy template directory to a temporary one for your snippet! (ask @janiczek about it)"});
+          reject();
+        }
+        resolve();
+    });
+  });
+}
+
 app.ports.eval.subscribe(
   ({channel, packages, imports, expressions}) => {
 
@@ -64,26 +88,32 @@ app.ports.eval.subscribe(
     
     console.log({packages, imports, decodedExpressions});
 
-    const tempDir = tmp.dirSync({prefix: 'snippet_'});
+    const snippetDir = tmp.dirSync({prefix: 'snippet_'}).name;
 
-    createElmPackageJson(tempDir.name);
+    copyTemplateToSnippet(templateDir, snippetDir, channel)
+    .then(() => {
 
-    const failedPackage = installPackages(packages, tempDir.name);
-    if (failedPackage) {
-        app.ports.getResultRaw.send({channel, type: "error_installing_package", error: failedPackage});
-        return;
-    };
+        const failedPackage = installPackages(packages, snippetDir);
+        if (failedPackage) {
+          app.ports.getResultRaw.send({channel, type: "error_installing_package", error: failedPackage});
+          return;
+        };
 
-    new Repl({ workDir: tempDir.name })
-      .getValues(imports, decodedExpressions)
-      .then((values) => {
-          app.ports.getResultRaw.send({channel, type: "result", result: values[values.length - 1]});
-          cleanup(tempDir.name);
-      })
-      .catch((err) => {
-          app.ports.getResultRaw.send({channel, type: "error_running_code", error: err.stderr.toString()});
-          cleanup(tempDir.name);
-      });
+        console.log('running the code');
+        new Repl({ workDir: snippetDir })
+        .getValues(imports, decodedExpressions)
+        .then((values) => {
+            console.log('done! sending');
+            app.ports.getResultRaw.send({channel, type: "result", result: values[values.length - 1]});
+            cleanup(snippetDir);
+        })
+        .catch((err) => {
+            console.log('error running the code');
+            app.ports.getResultRaw.send({channel, type: "error_running_code", error: err.stderr.toString()});
+            cleanup(snippetDir);
+        });
+
+    });
 
   }
 );
