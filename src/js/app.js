@@ -56,7 +56,7 @@ const cleanup = (dirName) => {
 
 const prepareTemplateDirectory = () => {
   console.log('preparing template directory (compiling elm-lang/core and stuff)');
-  const tempDir = tmp.dirSync({prefix: 'template_'});
+  const tempDir = tmp.dirSync({prefix: 'elmbot_template_'});
   createElmPackageJson(tempDir.name);
   return tempDir.name;
 };
@@ -88,7 +88,7 @@ app.ports.eval.subscribe(
     
     console.log({packages, imports, decodedExpressions});
 
-    const snippetDir = tmp.dirSync({prefix: 'snippet_'}).name;
+    const snippetDir = tmp.dirSync({prefix: 'elmbot_snippet_'}).name;
 
     copyTemplateToSnippet(templateDir, snippetDir, channel)
     .then(() => {
@@ -130,6 +130,17 @@ rtm.on('goodbye',
   message => app.ports.isRunning.send(false)
 );
 
+const clearAllTempFolders = () => {
+  rimraf('/tmp/elmbot_snippet_*', (err) => {if (err) {console.log(err);}});
+  rimraf('/tmp/elmbot_template_*', (err) => {if (err) {console.log(err);}});
+};
+
+process.on('exit', () => {
+    clearAllTempFolders();
+});
+
 process.on('SIGINT', function() {
+    clearAllTempFolders();
     process.exit();
 });
+
